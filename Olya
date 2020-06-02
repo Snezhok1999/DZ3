@@ -1,2 +1,818 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
+#include <time.h>
+
+void Books(void);
+void Students(void);
+
+struct Book{
+    unsigned long long ISBN;
+    char Author[128];
+    char Name[128];
+    int NumAll;
+    int NumUsed;
+};
+
+struct Student{
+    char SRB[32];
+    char Name[32];
+    char Surname[32];
+    char Patronymic[32];
+    char Faculty[32];
+    char Specialty[128];
+};
+
+int main(void){
+    int triggerBooks=0;
+    int triggerStudents=0;
+    
+    FILE *File = fopen("users.csv", "r");
+    if (File == NULL){
+        printf("Ошибка: Файл с пользователями не может быть открыт.");
+        return 0;
+    }
+    
+    int numline = 0;
+    while(! feof(File)){
+        if (fgetc(File)==';')
+            numline++;
+    }
+    if(numline%3 != 0){
+        printf("Ошибка: В файле 'users.csv' неправильный синтаксис.\n");
+        return 9;
+    }
+    numline/=3;
+    fclose(File);
+    while(1){
+        printf("Введите логин: ");
+        char Login[128];
+        scanf("%s", Login);
+    
+        printf("Введите пароль: ");
+        char Password[128];
+        scanf("%s", Password);
+    
+        File = fopen("users.csv", "r");
+        char *FileStr = calloc(1024, sizeof(char));
+        for (int i=0; i<numline;i++){
+            fgets(FileStr, 1024,File);
+            char CheckLogin[128];
+            char CheckPassword[128];
+            strcpy(CheckLogin,strsep(&FileStr,";"));
+            strcpy(CheckPassword,strsep(&FileStr,";"));
+            
+            if (strcmp(Password, CheckPassword)==0 && strcmp(Login, CheckLogin)==0){
+                triggerStudents=atoi(strsep(&FileStr,";"));
+                triggerBooks=atoi(strsep(&FileStr,";"));
+                i = numline;
+            }
+        }
+        fclose(File);
+    
+        if (triggerStudents==1 && triggerBooks==1){
+            int Command;
+            while(1){
+                printf("Выберите действие:\n");
+                printf(" 0: Выход\n");
+                printf(" 1: Работа с книгами\n");
+                printf(" 2: Работа со студентами\n");
+                printf("~ # ");
+                scanf("%d", &Command);
+                if (Command==0){
+                    return 0;
+                } else if(Command == 1){
+                    Books();
+                } else if(Command == 2){
+                    Students();
+                } else {
+                    printf("Ошибка. Неверная команда.\n");
+                }
+            }
+        } else if(triggerStudents==1){
+            Students();
+            return 0;
+        } else if(triggerBooks==1){
+            Books();
+            return 0;
+        } else{
+            printf("Ошибка. Неверный логин или пароль.\n");
+        }
+    }
+}
+
+void Books(void){
+    int Menu = -1;
+    FILE *File1 = fopen("books.csv", "r");
+    if (File1==NULL){
+        printf("Ошибка: Файл с книгами не может быть открыт.");
+        return;
+    }
+    
+    int numline = 0;
+    while(!feof(File1)){
+        if (fgetc(File1)==';')
+            numline++;
+    }
+    if(numline%4 != 0){
+        printf("Ошибка: В файле 'books.csv' неправильный синтаксис.\n");
+        return;
+    }
+    numline/=4;
+    fclose(File1);
+    
+    struct Book *Books;
+    Books=(struct Book*)malloc((numline)*sizeof(struct Book));
+    File1=fopen("books.csv", "r");
+    char *Buff = calloc(2048, sizeof(char));
+    for (int i=0; i<numline;i++){
+        fgets(Buff, 2048,File1);
+        Books[i].ISBN=atoll(strsep(&Buff,";"));
+        strcpy(Books[i].Author,strsep(&Buff,";"));
+        strcpy(Books[i].Name,strsep(&Buff,";"));
+        Books[i].NumAll=atoi(strsep(&Buff,";"));
+        Books[i].NumUsed=atoi(strsep(&Buff,"\n"));
+    }
+    fclose(File1);
+    
+    
+    while (1){
+        printf("Выберите действие:\n");
+        printf(" 1: Добавить новую книгу\n");
+        printf(" 2: Удалить книгу по ISBN\n");
+        printf(" 3: Просмотр всей информации по книге по ISBN\n");
+        printf(" 4: Вывести информацию по всем книгам\n");
+        printf(" 5: Посмотреть, кто взял книгу\n");
+        printf(" 6: Завершить работу программы\n");
+        printf("Books # ");
+        scanf("%d", &Menu);
+        while(getchar() != '\n'){}
+        
+        if(Menu == 1){
+            printf("Введите ISBN: ");
+            unsigned long long ISBN;
+            
+            scanf("%lli", &ISBN);
+            while(getchar() != '\n'){}
+
+            int Error=0;
+            for(int i=0; i<numline; i++) {
+                if(Books[i].ISBN == ISBN){
+                    printf("Ошибка, такой ISBN уже используется.\n");
+                    Error = 1;
+                    i = numline;
+                }
+            }
+            if (Error == 0){
+                Books=(struct Book*)realloc(Books ,(numline+1)*sizeof(struct Book));
+                Books[numline].ISBN=ISBN;
+                
+                printf("Введите автора: ");
+                scanf("%s", Books[numline].Author);
+                while(getchar() != '\n'){}
+                
+                printf("Введите название: ");
+                scanf("%s", Books[numline].Name);
+                while(getchar() != '\n'){}
+                
+                printf("Введите количество книг: ");
+                scanf("%d", &Books[numline].NumAll);
+                while(getchar() != '\n'){}
+                
+                Books[numline-1].NumUsed=0;
+                
+                numline++;
+            }
+        } else if (Menu == 2){
+            printf("Введите ISBN: ");
+            long long ISBN;
+            
+            scanf("%lli", &ISBN);
+            while(getchar() != '\n'){}
+            
+            int DesiredLine = -1;
+            for (int i=0; i<numline; i++){
+                if(ISBN == Books[i].ISBN){
+                    printf("Книга найдена...\n");
+                    DesiredLine = i;
+                    i = numline;
+                }
+            }
+            if (DesiredLine == -1){
+                printf("Книга не найдена, возврат в меню.\n");
+            } else {
+                FILE *StudentBooksFile = fopen("student_books.csv", "r");
+                if (StudentBooksFile == NULL){
+                    printf("Ошибка: Файл 'student_books.csv' не может быть открыт.");
+                } else {
+                    int numline2 = 0;
+                    while(!feof(StudentBooksFile)){
+                        if (fgetc(StudentBooksFile) == '\n')
+                            numline2++;
+                    }
+                    numline2++;
+                    
+                    fclose(StudentBooksFile);
+                
+                    char *Buff = calloc(1024, sizeof(char));
+                    StudentBooksFile = fopen("student_books.csv", "r");
+                    int OnHands = 0;
+                    
+                    for (int i=0; i<numline2; i++){
+                        fgets(Buff, 1024,StudentBooksFile);
+                        long long ISBN;
+                        ISBN = atoll(strsep(&Buff,";"));
+                        if (Books[DesiredLine].ISBN == ISBN){
+                            OnHands = 1;
+                            i = numline2;
+                        }
+                    }
+                    fclose(StudentBooksFile);
+                    
+                    if (OnHands==0){
+                        Books[DesiredLine].ISBN=0;
+                        printf("Удалено успешно!\n");
+                    } else {
+                        printf("Данная книга находится на руках!\n");
+                    }
+                }
+            }
+
+        } else if (Menu == 3){
+            printf("Введите ISBN книги:");
+            long long ISBN;
+            scanf("%lli", &ISBN);
+            printf("Поиск книги...\n");
+            int DesiredLine=-1;
+            for (int i=0; i<numline; i++){
+                if(ISBN == Books[i].ISBN && Books[i].ISBN != 0){
+                    printf("Книга найдена...\n");
+                    DesiredLine = i;
+                    i = numline;
+                }
+            }
+            if (DesiredLine == -1){
+                printf("Книга не найдена, возврат в меню.\n");
+            } else {
+                printf("Книга найдена:\n");
+                printf("ISBN: %lli\n", Books[DesiredLine].ISBN);
+                printf("Автор: %s\n", Books[DesiredLine].Author);
+                printf("Название: %s\n", Books[DesiredLine].Name);
+                printf("Книг в библиотеке: %d\n", Books[DesiredLine].NumAll);
+                printf("Книг на руках: %d\n", Books[DesiredLine].NumUsed);
+            }
+        } else if (Menu == 4){
+            for(int i=0; i<numline-1; i++){
+                for(int j=i+1; j<numline; j++){
+                    if (Books[i].ISBN > Books[j].ISBN){
+                        struct Book tempBooks;
+
+                        tempBooks.ISBN = Books[i].ISBN;
+                        strcpy(tempBooks.Author, Books[i].Author);
+                        strcpy(tempBooks.Name, Books[i].Name);
+                        tempBooks.NumAll = Books[i].NumAll;
+                        tempBooks.NumUsed = Books[i].NumUsed;
+                        
+                        Books[i].ISBN = Books[j].ISBN;
+                        strcpy(Books[i].Author, Books[j].Author);
+                        strcpy(Books[i].Name, Books[j].Name);
+                        Books[i].NumAll = Books[j].NumAll;
+                        Books[i].NumUsed = Books[j].NumUsed;
+                        
+                        Books[j].ISBN = tempBooks.ISBN;
+                        strcpy(Books[j].Author, tempBooks.Author);
+                        strcpy(Books[j].Name, tempBooks.Name);
+                        Books[j].NumAll = tempBooks.NumAll;
+                        Books[j].NumUsed = tempBooks.NumUsed;
+                    }
+                }
+            }
+            for (int i=0; i<numline; i++){
+                if (Books[i].ISBN != 0){
+                    printf("%lli %s %s %d %d\n", Books[i].ISBN,Books[i].Author, Books[i].Name, Books[i].NumAll, Books[i].NumUsed);
+                }
+            }
+            
+        } else if (Menu == 5){
+            int Error = 0;
+            int numline2 = 0;
+            int numline3 = 0;
+
+            FILE *File2 = fopen("student_books.csv", "r");
+            if (File2 == NULL){
+                printf("Ошибка: Файл 'student_books.csv' не может быть открыт.\n");
+                Error = 1;
+            } else {
+                while(!feof(File2)){
+                    if (fgetc(File2) == ';')
+                        numline2++;
+                }
+                if(numline2%2 != 0){
+                    printf("Ошибка: В файле 'student_books.csv' неправильный синтаксис.\n");
+                    Error = 1;
+                }
+                numline2/=2;
+            }
+            fclose(File2);
+            
+            FILE *File3 = fopen("students.csv", "r");
+            if (File3 == NULL){
+                printf("Ошибка: Файл 'students.csv' не может быть открыт.\n");
+                Error = 1;
+            } else {
+                while(!feof(File3)){
+                    if (fgetc(File3)==';')
+                        numline3++;
+                }
+                if(numline3%5 != 0){
+                    printf("Ошибка: В файле 'students.csv' неправильный синтаксис.\n");
+                    Error = 1;
+                }
+                numline3/=5;
+                fclose(File3);
+            }
+            
+            if(!Error){
+                File2 = fopen("student_books.csv", "r");
+                File3 = fopen("students.csv", "r");
+                
+                printf("Введите ISBN книги: ");
+                long long ISBN;
+                scanf("%lli", &ISBN);
+                while(getchar() != '\n'){}
+                
+                int DesiredLine = -1;
+                for (int i=0; i<numline; i++){
+                    if(ISBN == Books[i].ISBN && Books[i].ISBN != 0){
+                        printf("Книга найдена...\n");
+                        DesiredLine = i;
+                        i = numline;
+                    }
+                }
+                
+                if (DesiredLine == -1){
+                    printf("Книга не найдена, возврат в меню.\n");
+                } else {
+                    char ArrSRB[numline2][32];
+                    char Date[numline2][32];
+                    int ArraySize = 0;
+                    
+                    
+                    for (int i=0; i<numline2-1; i++){
+                        char *Buff2 = calloc(1024, sizeof(char));
+                        fgets(Buff2, 1024, File2);
+                        long long CheckISBN;
+                        char CheckSRB[32] = {0};
+                        char CheckDate[32] = {0};
+                        
+                        CheckISBN = atoll(strsep(&Buff2,";"));
+                        strcpy(CheckSRB,strsep(&Buff2,";"));
+                        strcpy(CheckDate,strsep(&Buff2,"\n"));
+                        
+                        if (CheckISBN == Books[DesiredLine].ISBN){
+                            strcpy(ArrSRB[ArraySize],CheckSRB);
+                            strcpy(Date[ArraySize],CheckDate);
+                            ArraySize++;
+                        }
+                    }
+                    
+                    if (ArraySize == 0){
+                        printf("Этой книги нет на руках.\n");
+                    } else {
+                        printf ("Эта книга на руках у:\n");
+                        
+                        char *Buff3 = calloc(1024, sizeof(char));
+                        for (int i=0; i<numline3; i++){
+                            fgets(Buff3, 1024,File3);
+                            char SRB[32] = {0};
+                            
+                            strcpy(SRB, strsep(&Buff3,";"));
+                            for (int j=0; j<=ArraySize; j++){
+                                if(strcmp(SRB, ArrSRB[j]) == 0){
+                                    printf("%s %s %s\n",strsep(&Buff3,";"), strsep(&Buff3,";"), strsep(&Buff3,";"));
+                                    printf(" Дата возврата:%s\n", Date[j]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (Menu == 6){
+            printf("Сохраняем базу данных...\n");
+            FILE *File1 = fopen("books.csv", "w");
+            if (File1 == NULL){
+                printf("Ошибка: Файл с книгами не может быть открыт.");
+            } else {
+                for(int i=0; i<numline; i++){
+                    if (Books[i].ISBN!=0) {
+                        fprintf(File1,"%lli;", Books[i].ISBN);
+                        fprintf(File1,"%s;", Books[i].Author);
+                        fprintf(File1,"%s;", Books[i].Name);
+                        fprintf(File1,"%d;", Books[i].NumAll);
+                        fprintf(File1,"%d", Books[i].NumUsed);
+                        if(i != numline-1){
+                            fprintf(File1,"\n");
+                        }
+                    }
+                }
+                printf("Сохранено успешно, завершаем работу.\n");
+                fclose(File1);
+                return ;
+            }
+            fclose(File1);
+        } else {
+            printf("Ошибка. Неверная команда.\n");
+        }
+    }
+}
+
+void Students(void){
+    int Menu = -1;
+    FILE *File1 = fopen("students.csv", "r");
+    if (File1 == NULL){
+        printf("Ошибка: Файл студентов не может быть открыт.");
+        return;
+    }
+    
+    int numline1 = 0;
+    while(!feof(File1)){
+        if (fgetc(File1) == ';'){
+            numline1++;
+        }
+    }
+    if(numline1%5 != 0){
+        printf("Ошибка: В файле 'students.csv' неправильный синтаксис.\n");
+        return;
+    }
+    numline1/=5;
+    fclose(File1);
+    
+    struct Student *Students;
+    Students = (struct Student*) malloc(numline1 * sizeof(struct Student));
+    File1 = fopen("students.csv", "r");
+    char *Buff1 = calloc(1024, sizeof(char));
+    for (int i=0; i<numline1; i++){
+        fgets(Buff1, 1024, File1);
+            strcpy(Students[i].SRB,strsep(&Buff1,";"));
+            strcpy(Students[i].Surname,strsep(&Buff1,";"));
+            strcpy(Students[i].Name,strsep(&Buff1,";"));
+            strcpy(Students[i].Patronymic,strsep(&Buff1,";"));
+            strcpy(Students[i].Faculty,strsep(&Buff1,";"));
+            strcpy(Students[i].Specialty,strsep(&Buff1,"\n"));
+        }
+        free(Buff1);
+        fclose(File1);
+        
+        while(1){
+            printf("Выберите действие:\n");
+            printf(" 1: Добавить студента\n");
+            printf(" 2: Удалить студента по зачетке\n");
+            printf(" 3: Сделать бэкап\n");
+            printf(" 4: Восстановить базу из файла бэкапа\n");
+            printf(" 5: Поиск по фамилии студента\n");
+            printf(" 6: Посмотреть, какие книги есть у студента\n");
+            printf(" 7: Завершить работу программы\n");
+            printf("Students # ");
+            scanf("%d", &Menu);
+            while(getchar() != '\n'){}
+
+            if (Menu == 1){
+                printf("Введите номер студ.билета:");
+                char SRB[32] = {0};
+                scanf("%s", SRB);
+                while(getchar() != '\n'){}
+                
+                int Error = 0;
+                for(int i=0; i<numline1; i++) {
+                    if(strcmp(SRB, Students[i].SRB) == 0){
+                        printf("Ошибка, студент с такой зачеткой уже есть в базе.\n");
+                        Error = 1;
+                        i = numline1;
+                    }
+                }
+                if (!Error){
+                    printf("Введите имя:");
+                    char Name[128] = {0};
+                    scanf("%s", Name);
+                    while(getchar() != '\n'){}
+                    
+                    printf("Введите Фамилию:");
+                    char Surname[128] = {0};
+                    scanf("%s", Surname);
+                    while(getchar() != '\n'){}
+                    
+                    printf("Введите Отчество:");
+                    char Patronymic[128] = {0};
+                    scanf("%s", Patronymic);
+                    while(getchar() != '\n'){}
+                    
+                    printf("Введите Факультет:");
+                    char Faculty[128] = {0};
+                    scanf("%s", Faculty);
+                    while(getchar() != '\n'){}
+                    
+                    printf("Введите Специальность:");
+                    char Specialty[128] = {0};
+                    scanf("%s", Specialty);
+                    while(getchar() != '\n'){}
+
+                    
+                    Students = (struct Student*) realloc(Students ,(numline1 + 1) * sizeof(struct Student));
+                    strcpy(Students[numline1].SRB,SRB);
+                    strcpy(Students[numline1].Surname,Surname);
+                    strcpy(Students[numline1].Name,Name);
+                    strcpy(Students[numline1].Patronymic,Patronymic);
+                    strcpy(Students[numline1].Faculty,Faculty);
+                    strcpy(Students[numline1].Specialty,Specialty);
+                    numline1++;
+                    printf("Студент добавлен\n");
+                }
+            } else if(Menu == 2){
+                int Error = 0;
+                int DesiredLine = -1;
+                int numline2 = 0;
+
+                FILE *File2 = fopen("student_books.csv", "r");
+                if (File2 == NULL){
+                    printf("Ошибка: Файл 'student_books.csv' не может быть открыт.");
+                    fclose(File2);
+                    Error = 1;
+                } else {
+                    while(!feof(File2)){
+                        if (fgetc(File2)==';')
+                            numline2++;
+                    }
+                    if(numline2%2 != 0){
+                        printf("Ошибка: В файле 'student_books.csv' неправильный синтаксис.\n");
+                        Error = 1;
+                    }
+                    numline2/=2;
+                    fclose(File2);
+                    
+                    File2 = fopen("student_books.csv", "r");
+                    
+                    printf("Введите номер зачетки: ");
+                    char SRB[32];
+                    scanf("%s",SRB);
+                    while(getchar() != '\n'){}
+                    
+                    Error = 1;
+                    for(int i=0; i<numline1; i++) {
+                        if(strcmp(SRB, Students[i].SRB)==0){
+                            DesiredLine = i;
+                            i = numline1;
+                            Error = 0;
+                        }
+                    }
+                    if (DesiredLine == -1){
+                        printf("Студент не найден, возврат в меню.\n");
+                        Error = 1;
+                    }
+
+                }
+                
+                if(Error == 0) {
+                    for (int i=0; i<numline2; i++){
+                        char *Buff2 = calloc(1024, sizeof(char));
+                        fgets(Buff2, 1024, File2);
+                        char SRB[32];
+                        strsep(&Buff2,";");
+                        strcpy(SRB,strsep(&Buff2,";"));
+                        if (strcmp(SRB, Students[DesiredLine].SRB) == 0){
+                            Error = 1;
+                            printf("У данного студента есть книги!\n");
+                            i = numline2;
+                        }
+                    }
+                    fclose(File2);
+                }
+                    
+                if (Error == 0){
+                    for(int i=0; i<numline1; i++){
+                        if(i > DesiredLine){
+                            strcpy(Students[i-1].SRB, Students[i].SRB);
+                            strcpy(Students[i-1].Name, Students[i].Name);
+                            strcpy(Students[i-1].Surname, Students[i].Name);
+                            strcpy(Students[i-1].Patronymic, Students[i].Patronymic);
+                            strcpy(Students[i-1].Faculty, Students[i].Faculty);
+                            strcpy(Students[i-1].Specialty, Students[i].Specialty);
+                        }
+                    }
+                    numline1--;
+                    printf("Удалено успешно!\n");
+                }
+            } else if(Menu == 3){
+                time_t TimeStartUnix = time(NULL);
+                struct tm *Time = localtime(&TimeStartUnix);
+                char FileNameParts[2][64] = {0};
+                char FileName[64] = {0};
+                
+                sprintf(FileNameParts[0], "students_%02d.%02d.%04d_", Time->tm_mday,Time->tm_mon+1, Time->tm_year + 1900);
+                sprintf(FileNameParts[1], "%02d.%02d.%02d.csv", Time->tm_hour,Time->tm_min, Time->tm_sec);
+                strcat(FileName, FileNameParts[0]);
+                strcat(FileName, FileNameParts[1]);
+
+                FILE *File2 = fopen(FileName, "w");
+                if (File2 == NULL){
+                    printf("Ошибка: Файл '%s' не может быть создан.", FileName);
+                } else {
+                    for(int i=0; i<numline1; i++){
+                        fprintf(File2,"%s;", Students[i].SRB);
+                        fprintf(File2,"%s;", Students[i].Name);
+                        fprintf(File2,"%s;", Students[i].Surname);
+                        fprintf(File2,"%s;", Students[i].Patronymic);
+                        fprintf(File2,"%s;", Students[i].Faculty);
+                        fprintf(File2,"%s", Students[i].Specialty);
+                        if(i != numline1-1){
+                            fprintf(File1,"\n");
+                        }
+                    }
+                    printf("Успешно Сохранено\n");
+                }
+                fclose(File2);
+            } else if(Menu == 4){
+                int Error = 0;
+                printf("Введите название файла: ");
+                char FileName[64];
+                scanf("%s",FileName);
+                
+                FILE *BackFile=fopen(FileName, "r");
+                if (BackFile==NULL){
+                    printf("Ошибка: Файл '%s' не может быть открыт.\n", FileName);
+                    Error = 1;
+                } else {
+                    numline1 = 0;
+                    while(! feof(BackFile)){
+                        if (fgetc(BackFile)==';')
+                            numline1++;
+                    }
+                    if(numline1%5 != 0){
+                        printf("Ошибка: В файле '%s' неправильный синтаксис.\n", FileName);
+                        Error = 1;
+                    }
+                    numline1/=5;
+                    fclose(BackFile);
+                }
+                if(!Error){
+                    FILE *File2 = fopen(FileName, "r");
+                    struct Student *Students_loading;
+                    
+                    Students_loading = (struct Student*) malloc(numline1 * sizeof(struct Student));
+                    int i=0;
+                    for (i=0; i<numline1; i++){
+                        char *Buff1 = calloc(1024, sizeof(char));
+                        fgets(Buff1, 1024, File2);
+                        strcpy(Students_loading[i].SRB,strsep(&Buff1,";"));
+                        strcpy(Students_loading[i].Surname,strsep(&Buff1,";"));
+                        strcpy(Students_loading[i].Name,strsep(&Buff1,";"));
+                        strcpy(Students_loading[i].Patronymic,strsep(&Buff1,";"));
+                        strcpy(Students_loading[i].Faculty,strsep(&Buff1,";"));
+                        strcpy(Students_loading[i].Specialty,strsep(&Buff1,"\n"));
+                    }
+                    fclose(File2);
+                    free(Students);
+                    Students = Students_loading;
+                }
+            } else if(Menu == 5){
+                printf("Введите Фамилию студента:");
+                char AskedSurname[128] = {0};
+                scanf("%s", AskedSurname);
+                
+                int DesiredLine = -1;
+                for (int i=0; i<numline1; i++){
+                    if(strcmp(Students[i].Surname, AskedSurname) == 0){
+                        DesiredLine = i;
+                        printf("[%s]: ", Students[i].SRB);
+                        printf("%s %c.%c.\n", Students[i].Surname, Students[i].Name[0], Students[i].Patronymic[0]);
+                        printf("  %s - %s\n", Students[i].Faculty, Students[i].Specialty);
+                    }
+                }
+                if (DesiredLine == -1){
+                    printf("Студент не найден\n");
+                }
+            } else if(Menu == 6){
+                int Error = 0;
+                int numline2 = 0;
+                int numline3 = 0;
+                int DesiredLine = -1;
+                FILE *File2 = fopen("student_books.csv", "r");
+                if (File2 == NULL){
+                    printf("Ошибка: Файл 'student_books.csv' не может быть открыт.");
+                    Error = 1;
+                } else {
+                    while(!feof(File2)){
+                        if (fgetc(File2) == ';')
+                            numline2++;
+                    }
+                    if(numline2%2 != 0){
+                        printf("Ошибка: В файле 'student_books.csv' неправильный синтаксис.\n");
+                        Error = 1;
+                    }
+                    numline2/=2;
+                    fclose(File2);
+                    
+                    File2 = fopen("student_books.csv", "r");
+                }
+                FILE *File3 = fopen("books.csv", "r");
+                if (File3 == NULL){
+                    printf("Ошибка: Файл 'books.csv' не может быть открыт.");
+                    Error = 1;
+                } else {
+                    while(! feof(File3)){
+                        if (fgetc(File3)==';')
+                            numline3++;
+                    }
+                    if(numline3%4 != 0){
+                        printf("Ошибка: В файле 'books.csv' неправильный синтаксис.\n");
+                        Error = 1;
+                    }
+                    numline3/=4;
+                    fclose(File3);
+                    
+                }
+                if(!Error){
+                    printf("Введите Номер зачетки:");
+                    char SRB[32];
+                    scanf("%s",SRB);
+
+                    for(int i=0; i<numline1; i++) {
+                        if(strcmp(SRB, Students[i].SRB)==0){
+                            DesiredLine = i;
+                            i = numline1;
+                        }
+                    }
+                    if (DesiredLine == -1){
+                        printf("Студент не найден\n");
+                        Error = 1;
+                    }
+                }
+                
+                if(!Error){
+                    long long ISBN;
+                    int HaveBooks = 0;
+                    int startcount = 0;
+                    for (int i=0; i<numline2; i++){
+                        char *Buff1 = calloc(1024, sizeof(char));
+                        fgets(Buff1, 1024, File2);
+                        char SRB[32] = {0};
+                        long long ISBN2;
+                        ISBN2 = atoll(strsep(&Buff1,";"));
+                        strcpy(SRB, strsep(&Buff1,";"));
+                        if (strcmp(SRB, Students[DesiredLine].SRB) == 0){
+                            ISBN = ISBN2;
+                            HaveBooks++;
+                            
+                            File3 = fopen("books.csv", "r");
+                            for (int j=0; j<numline3; j++){
+                                char *Buff2 = calloc(1024, sizeof(char));
+                                fgets(Buff2, 1024, File3);
+                                long long ISBN3;
+                                ISBN3 = atoll(strsep(&Buff2, ";"));
+                                for (int k=0; k<=HaveBooks; k++){
+                                    if(ISBN == ISBN3){
+                                        printf("%3d ISBN: %lli\n",++startcount, ISBN3);
+                                        printf("    Книга: %s\n",strsep(&Buff2,";"));
+                                        printf("    Автор: %s\n",strsep(&Buff2,";"));
+                                        printf("    Дата возврата: %s\n",strsep(&Buff1,"\n"));
+                                        k = HaveBooks+1;
+                                    }
+                                }
+                            }
+                        }
+                        printf("\n");
+                    }
+                    if (HaveBooks == 0){
+                        printf("У студента нет книг на руках.\n");
+                    }
+                }
+            } else if(Menu == 7){
+                FILE *File2 = fopen("students.csv", "w");
+                if (File2 == NULL){
+                    printf("Ошибка: Файл 'students.csv' не может быть открыт.");
+                } else {
+                    for(int i=0; i<numline1; i++){
+                        fprintf(File2,"%s;", Students[i].SRB);
+                        fprintf(File2,"%s;", Students[i].Surname);
+                        fprintf(File2,"%s;", Students[i].Name);
+                        fprintf(File2,"%s;", Students[i].Patronymic);
+                        fprintf(File2,"%s;", Students[i].Faculty);
+                        fprintf(File2,"%s",  Students[i].Specialty);
+                        if(i != numline1-1){
+                            fprintf(File2,"\n");
+                        }
+                    }
+                    fclose(File2);
+                    free(Students);
+                    printf("Сохранено успешно\n");
+                    return ;
+                }
+                fclose(File2);
+            } else {
+                printf("Ошибка. Неверная команда.\n");
+            }
+        }
+}
 
 
